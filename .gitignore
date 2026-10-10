@@ -1,5 +1,6 @@
 DerivedData/
 build/
+Generated/
 *.xcuserstate
 xcuserdata/
 *.ipa

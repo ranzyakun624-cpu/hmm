@@ -646,17 +646,14 @@ struct ContentView: View {
 
     // MARK: - Action Triggers
     private func triggerCleaner() {
-        let cacheMb = Int.random(in: 180...580)
-        let junkFiles = Int.random(in: 40...130)
-
         runOverlayProcess(
             title: "MEMBERSIHKAN SISTEM",
             steps: ["Menganalisis cache aplikasi…", "Menghapus file sementara…", "Membersihkan junk file…", "Merapikan penyimpanan…"],
             duration: 3.0
         ) {
             let removed = CacheCleaner.clearAppCaches()
-            cleanerSub = "\(cacheMb) MB cache & \(junkFiles) junk file dibersihkan"
-            triggerToast(title: "Pembersihan selesai", sub: "\(cacheMb) MB terbebas, \(junkFiles) file sampah dihapus")
+            cleanerSub = "\(removed) item cache dibersihkan"
+            triggerToast(title: "Pembersihan selesai", sub: "\(removed) item cache dihapus")
         }
     }
 

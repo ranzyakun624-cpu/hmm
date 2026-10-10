@@ -1,11 +1,10 @@
 name: SENSXIOS
+
 options:
   bundleIdPrefix: com.sensx
   deploymentTarget:
     iOS: "16.0"
-settings:
-  base:
-    SWIFT_VERSION: "5.0"
+
 targets:
   SENSXIOS:
     type: application
@@ -16,14 +15,16 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sensx.ios
         PRODUCT_NAME: SENSXIOS
-        INFOPLIST_KEY_CFBundleDisplayName: "SENS X IOS"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES
-        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_CFBundleDisplayName: "SENS X IOS"
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIRequiresFullScreen: YES
         INFOPLIST_KEY_UIStatusBarHidden: YES
         INFOPLIST_KEY_UIViewControllerBasedStatusBarAppearance: NO
+        ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: YES
     info:
       properties:
         LSApplicationQueriesSchemes:

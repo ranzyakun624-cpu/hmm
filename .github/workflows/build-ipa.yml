@@ -15,88 +15,96 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Extract ZIP if uploaded to repository
+      - name: Extract project ZIP
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
+
           ZIP_PATH=""
-          for f in \
-            "xit-ios.zip" \
-            "xit ios.zip" \
-            "GITHUB_UPLOAD/xit-ios.zip" \
-            "GITHUB_UPLOAD/xit ios.zip"; do
-            if [ -f "$f" ]; then
-              ZIP_PATH="$f"
+          for file in "xit-ios.zip" "xit ios.zip"; do
+            if [ -f "$file" ]; then
+              ZIP_PATH="$file"
               break
             fi
           done
 
-          if [ -n "$ZIP_PATH" ]; then
-            echo "Found zip archive: $ZIP_PATH"
-            python3 - "$ZIP_PATH" <<'PY'
+          if [ -z "$ZIP_PATH" ]; then
+            echo "xit-ios.zip was not found in the repository root."
+            exit 1
+          fi
+
+          echo "Extracting: $ZIP_PATH"
+          python3 - "$ZIP_PATH" <<'PY'
           import pathlib
           import sys
           import zipfile
 
           archive = pathlib.Path(sys.argv[1])
           destination = pathlib.Path.cwd().resolve()
+
           with zipfile.ZipFile(archive) as zipped:
               for member in zipped.infolist():
                   normalized = member.filename.replace("\\", "/")
                   relative = pathlib.PurePosixPath(normalized)
+
+                  # Workflow files must be committed directly to the repository.
+                  if normalized.startswith(".github/workflows/"):
+                      print(f"Skipping workflow inside ZIP: {normalized}")
+                      continue
+
                   if relative.is_absolute() or ".." in relative.parts:
-                      raise SystemExit(f"Unsafe path in ZIP: {member.filename}")
+                      raise SystemExit(f"Unsafe ZIP path: {member.filename}")
+
                   target = (destination / pathlib.Path(*relative.parts)).resolve()
                   if target != destination and destination not in target.parents:
-                      raise SystemExit(f"Unsafe path in ZIP: {member.filename}")
+                      raise SystemExit(f"Unsafe ZIP path: {member.filename}")
+
                   if member.is_dir():
                       target.mkdir(parents=True, exist_ok=True)
                   else:
                       target.parent.mkdir(parents=True, exist_ok=True)
                       target.write_bytes(zipped.read(member))
           PY
-            echo "Extraction completed."
-          else
-            echo "No zip archive found in repo root or GITHUB_UPLOAD. Continuing with repository files."
-          fi
 
-          test -f project.yml || { echo "project.yml not found at repository root"; exit 1; }
-          test -d AIMXIOS || { echo "AIMXIOS source directory not found at repository root"; exit 1; }
+          test -f project.yml || { echo "project.yml is missing from the ZIP"; exit 1; }
+          test -f AIMXIOS/AIMXIOSApp.swift || { echo "AIMXIOS source files were not extracted"; exit 1; }
+          test -f AIMXIOS/HexagonShape.swift || { echo "AIMXIOS/HexagonShape.swift is missing from the ZIP"; exit 1; }
+
+      - name: Show extracted project files
+        shell: bash
+        run: |
+          set -e
+          echo "--- project.yml ---"
+          cat project.yml
+          echo "--- AIMXIOS files ---"
+          find AIMXIOS -maxdepth 3 -type f -print | sort
 
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Debug repo layout before XcodeGen
-        shell: bash
-        run: |
-          echo "PWD: $(pwd)"
-          ls -la
-          echo "---"
-          if [ -d "AIMXIOS" ]; then echo "AIMXIOS directory: OK"; else echo "AIMXIOS directory: MISSING"; fi
-          if [ -f "project.yml" ]; then echo "project.yml: OK"; else echo "project.yml: MISSING"; fi
-          echo "---"
-          find . -maxdepth 2 -type d | sort | head -200
-
       - name: Generate Xcode project
         run: xcodegen generate --spec ./project.yml
 
-      - name: Build for iPhone and iPad
-        run: >-
-          xcodebuild
-          -project SENSXIOS.xcodeproj
-          -scheme SENSXIOS
-          -configuration Release
-          -sdk iphoneos
-          -derivedDataPath "$RUNNER_TEMP/DerivedData"
-          CODE_SIGNING_ALLOWED=NO
-          build
+      - name: Build unsigned iOS app
+        run: |
+          xcodebuild \
+            -project SENSXIOS.xcodeproj \
+            -scheme SENSXIOS \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
       - name: Package unsigned IPA
         run: |
           APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/SENSXIOS.app"
           test -d "$APP_PATH"
+
           mkdir -p "$RUNNER_TEMP/ipa/Payload"
           ditto "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/SENSXIOS.app"
+
           cd "$RUNNER_TEMP/ipa"
           /usr/bin/zip -qry "$GITHUB_WORKSPACE/SENSXIOS-unsigned.ipa" Payload
 

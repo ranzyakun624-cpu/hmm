@@ -24,7 +24,6 @@ targets:
         INFOPLIST_KEY_UIRequiresFullScreen: YES
         INFOPLIST_KEY_UIStatusBarHidden: YES
         INFOPLIST_KEY_UIViewControllerBasedStatusBarAppearance: NO
-        ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: YES
     info:
       properties:
         LSApplicationQueriesSchemes:

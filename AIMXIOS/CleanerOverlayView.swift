@@ -41,9 +41,7 @@ struct CleanerOverlayView: View {
                 // Process Ring
                 ZStack {
                     Circle()
-                        .stroke(
-                            StrokeStyle(lineWidth: 1, dash: [3, 7])
-                        )
+                        .stroke(style: StrokeStyle(lineWidth: 1, dash: [3, 7]))
                         .foregroundColor(cyanGlow.opacity(0.3))
                         .frame(width: 150, height: 150)
                         .rotationEffect(.degrees(ringRotation))

@@ -16,20 +16,45 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Extract ZIP if uploaded to repository
+        shell: bash
         run: |
-          if [ -f "xit ios.zip" ]; then
-            echo "Found xit ios.zip! Extracting..."
-            unzip -o "xit ios.zip" -d .
-          elif [ -f "xit-ios.zip" ]; then
-            echo "Found xit-ios.zip! Extracting..."
-            unzip -o "xit-ios.zip" -d .
+          set +e
+          ZIP_PATH=""
+          for f in \
+            "xit-ios.zip" \
+            "xit ios.zip" \
+            "GITHUB_UPLOAD/xit-ios.zip" \
+            "GITHUB_UPLOAD/xit ios.zip"; do
+            if [ -f "$f" ]; then
+              ZIP_PATH="$f"
+              break
+            fi
+          done
+
+          if [ -n "$ZIP_PATH" ]; then
+            echo "Found zip archive: $ZIP_PATH"
+            unzip -o "$ZIP_PATH" -d .
+            echo "Extraction completed."
+          else
+            echo "No zip archive found in repo root or GITHUB_UPLOAD. Continuing with repository files."
           fi
 
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      - name: Debug repo layout before XcodeGen
+        shell: bash
+        run: |
+          echo "PWD: $(pwd)"
+          ls -la
+          echo "---"
+          if [ -d "AIMXIOS" ]; then echo "AIMXIOS directory: OK"; else echo "AIMXIOS directory: MISSING"; fi
+          if [ -f "project.yml" ]; then echo "project.yml: OK"; else echo "project.yml: MISSING"; fi
+          echo "---"
+          find . -maxdepth 2 -type d | sort | head -200
+
       - name: Generate Xcode project
-        run: xcodegen generate --spec project.yml
+        run: xcodegen generate --spec ./project.yml
 
       - name: Build for iPhone and iPad
         run: >-

@@ -15,58 +15,15 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Extract ZIP if uploaded to repository
+      - name: Prepare checked-in sources
         shell: bash
         run: |
           set -e
-          ZIP_PATH=""
-          for f in \
-            "xit-ios.zip" \
-            "xit ios.zip" \
-            "GITHUB_UPLOAD/xit-ios.zip" \
-            "GITHUB_UPLOAD/xit ios.zip"; do
-            if [ -f "$f" ]; then
-              ZIP_PATH="$f"
-              break
-            fi
-          done
-
-          if [ -n "$ZIP_PATH" ]; then
-            echo "Found zip archive: $ZIP_PATH"
-            python3 - "$ZIP_PATH" <<'PY'
-          import pathlib
-          import sys
-          import zipfile
-
-          archive = pathlib.Path(sys.argv[1])
-          destination = pathlib.Path.cwd().resolve()
-          with zipfile.ZipFile(archive) as zipped:
-              for member in zipped.infolist():
-                  normalized = member.filename.replace("\\", "/")
-                  relative = pathlib.PurePosixPath(normalized)
-                  if normalized.startswith(".github/workflows/"):
-                    print(f"Skipping workflow bundled in ZIP: {normalized}")
-                    continue
-                  if relative.is_absolute() or ".." in relative.parts:
-                      raise SystemExit(f"Unsafe path in ZIP: {member.filename}")
-                  target = (destination / pathlib.Path(*relative.parts)).resolve()
-                  if target != destination and destination not in target.parents:
-                      raise SystemExit(f"Unsafe path in ZIP: {member.filename}")
-                  if member.is_dir():
-                      target.mkdir(parents=True, exist_ok=True)
-                  else:
-                      target.parent.mkdir(parents=True, exist_ok=True)
-                      target.write_bytes(zipped.read(member))
-          PY
-            echo "Extraction completed."
-          else
-            echo "No zip archive found in repo root or GITHUB_UPLOAD. Continuing with repository files."
-          fi
-
+          echo "Using checked-in repository sources; ZIP archives are ignored."
           test -f project.yml || { echo "project.yml not found at repository root"; exit 1; }
           test -d AIMXIOS || { echo "AIMXIOS source directory not found at repository root"; exit 1; }
-          test -f AIMXIOS/AIMXIOSApp.swift || { echo "AIMXIOS folder exists but app source files were not extracted"; find . -maxdepth 3 -print; exit 1; }
-          test -f AIMXIOS/HexagonShape.swift || { echo "AIMXIOS/HexagonShape.swift is missing from the ZIP"; find AIMXIOS -maxdepth 3 -type f -print; exit 1; }
+          test -f AIMXIOS/AIMXIOSApp.swift || { echo "AIMXIOS/AIMXIOSApp.swift is missing from the repository"; find . -maxdepth 3 -print; exit 1; }
+          test -f AIMXIOS/HexagonShape.swift || { echo "AIMXIOS/HexagonShape.swift is missing from the repository"; find AIMXIOS -maxdepth 3 -type f -print; exit 1; }
 
           # XcodeGen requires info.path when the spec uses info.properties.
           python3 <<'PY'

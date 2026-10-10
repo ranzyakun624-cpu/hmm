@@ -29,10 +29,7 @@ struct SplashScreenView: View {
 
                     // Outer Dashed Ring
                     Circle()
-                        .stroke(
-                            StrokeStyle(lineWidth: 1.5, dash: [6, 6]),
-                            value: 1
-                        )
+                        .stroke(style: StrokeStyle(lineWidth: 1.5, dash: [6, 6]))
                         .foregroundColor(cyanGlow.opacity(0.3))
                         .frame(width: 172, height: 172)
                         .rotationEffect(.degrees(spinOuter))

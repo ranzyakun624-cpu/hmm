@@ -1,0 +1,60 @@
+name: Build unsigned SENS X IOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Extract ZIP if uploaded to repository
+        run: |
+          if [ -f "xit ios.zip" ]; then
+            echo "Found xit ios.zip! Extracting..."
+            unzip -o "xit ios.zip" -d .
+          elif [ -f "xit-ios.zip" ]; then
+            echo "Found xit-ios.zip! Extracting..."
+            unzip -o "xit-ios.zip" -d .
+          fi
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+
+      - name: Build for iPhone and iPad
+        run: >-
+          xcodebuild
+          -project SENSXIOS.xcodeproj
+          -scheme SENSXIOS
+          -configuration Release
+          -sdk iphoneos
+          -derivedDataPath "$RUNNER_TEMP/DerivedData"
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+      - name: Package unsigned IPA
+        run: |
+          APP_PATH="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/SENSXIOS.app"
+          test -d "$APP_PATH"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          ditto "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/SENSXIOS.app"
+          cd "$RUNNER_TEMP/ipa"
+          /usr/bin/zip -qry "$GITHUB_WORKSPACE/SENSXIOS-unsigned.ipa" Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SENSXIOS-unsigned-IPA
+          path: SENSXIOS-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
